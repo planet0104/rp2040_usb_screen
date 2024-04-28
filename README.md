@@ -2,3 +2,4 @@
  rp2040 usb screen
 
 ![clock.jpg](clock.jpg)
+![gif](image.gif)

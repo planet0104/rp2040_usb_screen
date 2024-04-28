@@ -10,3 +10,5 @@ nusb = "0.1.8"
 futures-lite = "2.3.0"
 offscreen-canvas = { git = "https://github.com/planet0104/offscreen-canvas", tag = "0.1.9"}
 chrono = "0.4.38"
+gif-dispose = "5"
+gif = "0.13"
