@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use alloc::vec::{self, Vec};
 use embassy_rp::{gpio::{Output, Pin}, spi::{Async, Instance, Spi}};
 use embassy_time::Timer;
 
@@ -277,6 +278,29 @@ where
     ) -> Result<(), ()> {
         self.set_address_window(sx, sy, ex, ey).await?;
         self.write_pixels_buffered(colors).await
+    }
+
+    pub async fn draw_image_at(&mut self, x: u16, y: u16, image: &[u16], width: u16){
+        for (y1, pixels) in image.chunks(width as usize).enumerate(){
+            //垂直方向不能超出屏幕
+            let sy = y+y1 as u16;
+            if sy >= self.width as u16 {
+                break;
+            }
+            let mut line_width = pixels.len();
+            //水平方向，不绘制超出宽度的像素
+            if x as usize+line_width > self.height as usize{
+                line_width = self.height as usize - x as usize;
+            }
+            let _ = self.set_pixels_buffered(x, sy, x+line_width as u16, sy+1, pixels[0..line_width].iter().map(|p| *p)).await;
+        }
+    }
+
+    pub async fn clear_screen(&mut self, color: u16){
+        let mut colors = alloc::vec![color; self.width as usize];
+        for l in 0..self.height{
+            let _ = self.set_pixels_buffered(0, l as u16, self.width as u16, l as u16+1, colors.clone().into_iter()).await;
+        }
     }
 }
 

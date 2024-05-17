@@ -34,6 +34,18 @@ impl Rgb565Pixel{
     }
 }
 
+pub struct Rgb565Image<'a>{
+    pub pixels: &'a mut [u16],
+    pub width: u16,
+    pub height: u16,
+}
+
+impl <'a> Rgb565Image<'a>{
+    pub fn get_pixel(&self, x: u32, y: u32) -> Rgb565Pixel{
+        Rgb565Pixel(self.pixels[y as usize * self.width as usize + x as usize])
+    }
+}
+
 // pub fn rgb_image_to_rgb565(img: &RgbImage) -> Vec<u8>{
 //     let mut rgb565 = vec![0u8; img.width() as usize * img.height() as usize * 2];
 //     for (i, p) in img.pixels().enumerate(){

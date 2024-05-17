@@ -1,10 +1,13 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use byte_slice_cast::AsMutByteSlice;
 use embassy_executor::Spawner;
 use embassy_futures::join::join;
 use embassy_rp::bind_interrupts;
+use embassy_rp::clocks::RoscRng;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_13, PIN_14, PIN_4, PIN_6, PIN_7, SPI0, USB};
 use embassy_rp::rom_data::reset_to_usb_boot;
@@ -13,19 +16,20 @@ use embassy_rp::usb::{Driver, InterruptHandler};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_time::Timer;
-use embassy_usb::driver::{Endpoint, EndpointIn, EndpointOut};
+use embassy_usb::driver::{Endpoint, EndpointOut};
 use embassy_usb::msos::{self, windows_version};
 use embassy_usb::{Builder, Config};
-use core::fmt::Write;
+use canvas::Canvas;
 use core::slice;
-use heapless::String;
 use panic_halt as _;
-
 mod st7735;
-
+mod rgb565;
+mod splash;
+mod canvas;
+use splash::Controller;
+use embedded_alloc::Heap;
 use st7735::{Orientation, ST7735};
 // mod rgb2yuv;
-// mod rgb565;
 
 // 这是一个随机生成的 GUID，允许 Windows 上的客户端找到我们的设备
 const DEVICE_INTERFACE_GUIDS: &[&str] = &["{705E1599-5BFF-8DA9-6E33-7141B0636461}"];
@@ -36,8 +40,18 @@ bind_interrupts!(struct Irqs {
 
 static CHANNEL: Channel<ThreadModeRawMutex, (i32, u16, u16, u16, u16), 1> = Channel::new();
 
+#[global_allocator]
+static HEAP: Heap = Heap::empty();
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    {
+        use core::mem::MaybeUninit;
+        const HEAP_SIZE: usize = 1024*30;
+        static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+        unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
+    }
+    
     let p = embassy_rp::init(Default::default());
 
     // Create the driver, from the HAL.
@@ -119,7 +133,9 @@ async fn main(spawner: Spawner) {
     const MAGIC_NUM_LEN: usize = 8;
     let magic_num_buf = &mut [0u8; MAGIC_NUM_LEN];
 
-    let _ = spawner.spawn(display_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.DMA_CH0, p.DMA_CH1));
+    //屏幕缓冲区指针
+    let image_data_clone_ptr = image_data_clone.as_ptr();
+    let _ = spawner.spawn(display_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.DMA_CH0, p.DMA_CH1, image_data_clone_ptr as i32));
 
     let echo_fut = async {
         loop {
@@ -179,7 +195,7 @@ async fn main(spawner: Spawner) {
 }
 
 #[embassy_executor::task]
-async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, dma_ch0: DMA_CH0, dma_ch1: DMA_CH1) {
+async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, dma_ch0: DMA_CH0, dma_ch1: DMA_CH1, image_buf_ptr: i32) {
     /*
     GND <=> GND
     VCC <=> 3V3
@@ -191,6 +207,9 @@ async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p
     BLK <=> 不连接
      */
 
+    let mut splash = Controller::new(RoscRng);
+    let mut frame_received = false;
+
     let spi_sclk = p6;
     let spi_mosi = p7;
     let spi_miso = p4;
@@ -199,30 +218,39 @@ async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p
     let spi = Spi::new(spi, spi_sclk, spi_mosi, spi_miso, dma_ch0, dma_ch1, spi_cfg);
 
     let dc = Output::new(p13, Level::Low);
-    let rst = Output::new(p14, Level::Low);
+    let rst: Output<PIN_14> = Output::new(p14, Level::Low);
     let screen_width = 128;
     let screen_height = 160;
     let mut disp = ST7735::new(spi, dc, Some(rst), true, false, screen_width, screen_height);
     disp.init().await.unwrap();
     disp.set_orientation(&Orientation::Landscape).await.unwrap();
 
+    //用于绘图的缓冲区
+    let buf = unsafe { slice::from_raw_parts_mut(image_buf_ptr as *mut u16, 20_480) };
+    let mut canvas = Canvas{ buf, width: 160, height: 128 };
+
     loop {
-        let (ptr, x, y, width, height) = CHANNEL.receive().await;
+        let frame = if !frame_received{
+            match CHANNEL.try_receive(){
+                Ok(ret) => {
+                    frame_received = true;
+                    ret
+                }
+                Err(_) => {
+                    splash.update();
+                    splash.render(&mut canvas);
+                    disp.draw_image_at(0, 0, &canvas.buf, 160).await;
+                    continue;
+                }
+            }
+        }else{
+            CHANNEL.receive().await
+        };
+
+        let (ptr, x, y, width, height) = frame;
         let len = (width * height) as usize;
         let img = unsafe { slice::from_raw_parts(ptr as *mut u16, 20_480) };
-        let colors = &img[0..len];
-        for (y1, pixels) in colors.chunks(width.into()).enumerate(){
-            //垂直方向不能超出屏幕
-            let sy = y+y1 as u16;
-            if sy >= screen_width as u16 {
-                break;
-            }
-            let mut line_width = pixels.len();
-            //水平方向，不绘制超出宽度的像素
-            if x as usize+line_width > screen_height as usize{
-                line_width = screen_height as usize - x as usize;
-            }
-            let _ = disp.set_pixels_buffered(x, sy, x+line_width as u16, sy+1, pixels[0..line_width].iter().map(|p| *p)).await;
-        }
+        let image = &img[0..len];
+        disp.draw_image_at(x, y, &image, width).await;
     }
 }

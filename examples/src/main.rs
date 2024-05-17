@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::Result;
 mod rgb565;
 mod usb_screen;
 mod draw_bitmap;

@@ -1,6 +1,6 @@
 [package]
 name = "usb_screen_client"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
@@ -11,4 +11,4 @@ futures-lite = "2.3.0"
 offscreen-canvas = { git = "https://github.com/planet0104/offscreen-canvas", tag = "0.1.9"}
 chrono = "0.4.38"
 gif-dispose = "5"
-gif = "0.13"
+gif = { version = "0.13.1", default-features = false}

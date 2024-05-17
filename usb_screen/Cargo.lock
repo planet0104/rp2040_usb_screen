@@ -518,6 +518,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fc247028eae04174b6635104a35b1ed336aabef4654f5e87a8f32327d231970"
 
 [[package]]
+name = "embedded-alloc"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddae17915accbac2cfbc64ea0ae6e3b330e6ea124ba108dada63646fd3c6f815"
+dependencies = [
+ "critical-section",
+ "linked_list_allocator",
+]
+
+[[package]]
 name = "embedded-graphics"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -936,6 +946,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+
+[[package]]
 name = "litrs"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1186,15 +1202,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa76aaf39101c457836aec0ce2316dbdc3ab723cdda1c6bd4e6ad4208acaca7"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rand"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
-dependencies = [
- "rand_core",
 ]
 
 [[package]]
@@ -1550,6 +1557,7 @@ dependencies = [
  "embassy-sync 0.5.0",
  "embassy-time",
  "embassy-usb",
+ "embedded-alloc",
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-hal-bus",
@@ -1558,14 +1566,14 @@ dependencies = [
  "fixed",
  "fixed-macro",
  "futures",
- "heapless 0.8.0",
  "log",
+ "micromath",
  "once_cell",
  "panic-halt",
  "pio",
  "pio-proc",
  "portable-atomic",
- "rand",
+ "rand_core",
  "static_cell",
  "tinybmp",
  "usbd-hid 0.7.0",

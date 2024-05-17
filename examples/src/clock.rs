@@ -23,7 +23,7 @@ pub fn draw(interface: &Interface) -> Result<()>{
         let date = Local::now().format("%Y/%m/%d %H:%M:%S").to_string();
         canvas.draw_text(&date, WHITE, 16., 5, 105);
 
-        draw_rgb_image(0, 0, &canvas.image_data().convert(), interface);
+        draw_rgb_image(0, 0, &canvas.image_data().convert(), interface)?;
         std::thread::sleep(Duration::from_secs(1));
     }
 }

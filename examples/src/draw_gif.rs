@@ -30,7 +30,7 @@ pub fn draw(interface: &Interface) -> Result<()>{
 
     loop{
         for frame in &frames{
-            draw_rgb_image(0, 0, frame, interface);
+            draw_rgb_image(0, 0, frame, interface)?;
         }
     }
 }
