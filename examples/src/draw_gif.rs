@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use nusb::Interface;
 use anyhow::Result;
 use image::{buffer::ConvertBuffer, RgbImage, RgbaImage};
@@ -6,7 +8,7 @@ use crate::usb_screen::draw_rgb_image;
 
 pub fn draw(interface: &Interface) -> Result<()>{
    
-    let file = std::fs::File::open("assets/tothesky.gif")?;
+    let file = Cursor::new(include_bytes!("../assets/tothesky.gif"));
 
     let mut gif_opts = gif::DecodeOptions::new();
     // Important:
