@@ -40,11 +40,36 @@ bind_interrupts!(struct Irqs {
 
 static CHANNEL: Channel<ThreadModeRawMutex, (i32, u16, u16, u16, u16), 1> = Channel::new();
 
+//用于显示待机动画的内存区域
 #[global_allocator]
 static HEAP: Heap = Heap::empty();
 
+/*
+
+在RP2040开发板的USB接口创建一个USB设备，直接使用USB协议的批量传输（Bulk Transfer）方式在设备间传输数据，从USB端接收RGB565图像数据。
+
+接收数据格式如下：
+
+1、图像传输开始，共16字节。
+其中最高8字节固定64位无符号数：7596835243154170209，然后依次是图像宽度、图像高度、x、y，它们都是16位无符号数。
+
+[7596835243154170209, width(u16), height(u16), x(u16), y(u16) ]
+
+2、图像传输结束，共8字节，固定64位无符号数：7596835243154170466
+[7596835243154170466]
+
+3、重启到U盘模式，共8字节，固定64位无符号数：7093010483740242786
+[7093010483740242786]
+
+4、图像数据块，16位无符号数组，不定长，每次最大接收64字节
+从USB接收到图像开始时，pix_index置0，并标记图像传输开始。后续接收到的数据块依次放入image_data数组中。图像接收结束后。
+将image_data复制到image_data_clone数组中，然后给display_task发送消息，图像数据异步绘制到TFT模块上。此时image_data
+数组继续用于接收下一帧图像数据。
+ */
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    //初始化一块30k的堆内存，用于运行待机动画(待机动画代码使用alloc库)
     {
         use core::mem::MaybeUninit;
         const HEAP_SIZE: usize = 1024*30;
@@ -118,25 +143,38 @@ async fn main(spawner: Spawner) {
     // Run the USB device.
     let usb_fut = usb.run();
 
+    //这块内存用于接收从USB传输过来的图像，最大160x128像素的RGB565图像,共40,960字节
     let image_data = &mut [0u16; 20_480];
+    //这块内存存放接收到的图像副本，发送到另外一个异步任务中绘制到TFT屏幕上。
     let image_data_clone = &mut [0u16; 20_480];
+    //下一个图像数据存放于数据中的索引
     let mut pix_index = 0;
+    //是否在传输图像
     let mut image_start = false;
+    //发送过来的图像宽度
     let mut image_width = 0u16;
+    //发送过来的图像高度
     let mut image_height = 0u16;
+    //绘制在屏幕上的位置x坐标
     let mut image_x = 0u16;
+    //绘制在屏幕上的位置y坐标
     let mut image_y = 0u16;
 
+    //图像传输开始标记(8字节)
     const IMAGE_AA:u64 = 7596835243154170209;
+    //重启到U盘模式命令(8字节)
     const BOOT_USB:u64 = 7093010483740242786;
+    //图像传输结束标记(8字节)
     const IMAGE_BB:u64 = 7596835243154170466;
     const MAGIC_NUM_LEN: usize = 8;
     let magic_num_buf = &mut [0u8; MAGIC_NUM_LEN];
 
     //屏幕缓冲区指针
     let image_data_clone_ptr = image_data_clone.as_ptr();
+    //启动异步绘图任务
     let _ = spawner.spawn(display_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.DMA_CH0, p.DMA_CH1, image_data_clone_ptr as i32));
 
+    //图像接收任务
     let echo_fut = async {
         loop {
             read_ep.wait_enabled().await;
@@ -225,11 +263,12 @@ async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p
     disp.init().await.unwrap();
     disp.set_orientation(&Orientation::Landscape).await.unwrap();
 
-    //用于绘图的缓冲区
+    //在没有图像传输时，借用USB图像接收缓冲区，来绘制吃豆人图像
     let buf = unsafe { slice::from_raw_parts_mut(image_buf_ptr as *mut u16, 20_480) };
     let mut canvas = Canvas{ buf, width: 160, height: 128 };
 
     loop {
+        //没有接收到任何图像时，循环绘制吃豆人
         let frame = if !frame_received{
             match CHANNEL.try_receive(){
                 Ok(ret) => {
@@ -244,9 +283,10 @@ async fn display_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p
                 }
             }
         }else{
+        //一旦从USB接收到图像，就一直等待图像到达
             CHANNEL.receive().await
         };
-
+        //读取接收到的图像数据，转换成RGB565图像数组，绘制到TFT屏幕。
         let (ptr, x, y, width, height) = frame;
         let len = (width * height) as usize;
         let img = unsafe { slice::from_raw_parts(ptr as *mut u16, 20_480) };
