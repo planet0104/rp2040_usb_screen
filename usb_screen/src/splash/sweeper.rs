@@ -1,9 +1,10 @@
 use core::slice;
 
 use alloc::vec::Vec;
+use byte_slice_cast::AsMutByteSlice;
 use embassy_rp::clocks::RoscRng;
 use micromath::F32Ext;
-use crate::canvas::Canvas;
+use super::canvas::Canvas;
 
 use super::mine::Mine;
 use super::neural_net::NeuralNet;
@@ -62,6 +63,17 @@ impl MineSweeper {
         p2.push(unsafe { slice::from_raw_parts_mut(include_bytes!("../../assets/p28.raw").as_ptr() as *mut u16, 16*16) }.to_vec());
         p2.push(unsafe { slice::from_raw_parts_mut(include_bytes!("../../assets/p29.raw").as_ptr() as *mut u16, 16*16) }.to_vec());
 
+        // 图像是LE格式，转换成BE，因为ST7789默认是BE模式
+        for img in &mut p0{
+            crate::rgb565::rgb565_le_to_be(img.as_mut_byte_slice());
+        }
+        for img in &mut p1{
+            crate::rgb565::rgb565_le_to_be(img.as_mut_byte_slice());
+        }
+        for img in &mut p2{
+            crate::rgb565::rgb565_le_to_be(img.as_mut_byte_slice());
+        }
+
         MineSweeper {
             tick: 0,
             rotation: 0.,
@@ -82,8 +94,9 @@ impl MineSweeper {
         self.its_brain.put_weights(w)
     }
 
-    pub fn render<'a>(&mut self, canvas:&mut Canvas<'a>){
-        if self.tick % 3 == 0{
+    pub fn render<'a>(&mut self, canvas:&mut Canvas){
+        let skip = 6;
+        if self.tick % skip == 0{
             self.current_img += 1;
             if self.current_img == self.img_indexes.len(){
                 self.current_img = 0;
@@ -152,8 +165,8 @@ impl MineSweeper {
             return false;
         }
         //把输出复制到扫雷机的左、右履带轮轨
-        self.left_track = output[0]/1.5;
-        self.right_track = output[1]/1.5;
+        self.left_track = output[0]/2.;
+        self.right_track = output[1]/2.;
 
         //计算驾驶的力
         //扫雷机的转动力是利用施加到它左、右履带轮轨上的力之差来计算的。
@@ -179,7 +192,6 @@ impl MineSweeper {
         self.look_at.y = self.rotation.cos();
 
         //更新位置
-        
         self.position += Vector2D::mul(&self.look_at, self.speed);
         
         //屏幕越界处理

@@ -4,26 +4,26 @@
 pub struct Rgb565Pixel(pub u16);
 
 impl Rgb565Pixel {
-    const R_MASK: u16 = 0b1111_1000_0000_0000;
-    const G_MASK: u16 = 0b0000_0111_1110_0000;
-    const B_MASK: u16 = 0b0000_0000_0001_1111;
+    pub const R_MASK: u16 = 0b1111_1000_0000_0000;
+    pub const G_MASK: u16 = 0b0000_0111_1110_0000;
+    pub const B_MASK: u16 = 0b0000_0000_0001_1111;
 
     /// Return the red component as a u8.
     ///
     /// The bits are shifted so that the result is between 0 and 255
-    fn red(self) -> u8 {
+    pub fn red(self) -> u8 {
         ((self.0 & Self::R_MASK) >> 8) as u8
     }
     /// Return the green component as a u8.
     ///
     /// The bits are shifted so that the result is between 0 and 255
-    fn green(self) -> u8 {
+    pub fn green(self) -> u8 {
         ((self.0 & Self::G_MASK) >> 3) as u8
     }
     /// Return the blue component as a u8.
     ///
     /// The bits are shifted so that the result is between 0 and 255
-    fn blue(self) -> u8 {
+    pub fn blue(self) -> u8 {
         ((self.0 & Self::B_MASK) << 3) as u8
     }
 }
@@ -46,37 +46,12 @@ impl <'a> Rgb565Image<'a>{
     }
 }
 
-// pub fn rgb_image_to_rgb565(img: &RgbImage) -> Vec<u8>{
-//     let mut rgb565 = vec![0u8; img.width() as usize * img.height() as usize * 2];
-//     for (i, p) in img.pixels().enumerate(){
-//         let rgb565_pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
-//         let be_bytes = rgb565_pixel.0.to_be_bytes();
-//         rgb565[i*2] = be_bytes[0];
-//         rgb565[i*2+1] = be_bytes[1];
-//     }
-//     rgb565
-// }
-
-// pub fn rgb888_to_rgb565(img: &[u8], width: usize, height: usize) -> Vec<u8>{
-//     let mut rgb565 = vec![0u8; width * height * 2];
-//     for (i, p) in img.chunks(3).enumerate(){
-//         let rgb565_pixel: Rgb565Pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
-//         let be_bytes = rgb565_pixel.0.to_le_bytes();
-//         rgb565[i*2] = be_bytes[0];
-//         rgb565[i*2+1] = be_bytes[1];
-//     }
-//     rgb565
-// }
-
-// pub fn rgb565_image_to_rgb(rgb565: &[u8], width: u32, height: u32) -> RgbImage{
-//     let mut rgb = RgbImage::new(width, height);
-//     for (i, p) in rgb.pixels_mut().enumerate(){
-//         let be_bytes = &rgb565[i*2..i*2+2];
-//         let rgb565_pixel = u16::from_le_bytes([be_bytes[0], be_bytes[1]]);
-//         let rgb565_pixel = Rgb565Pixel(rgb565_pixel);
-//         p[0] = rgb565_pixel.red();
-//         p[1] = rgb565_pixel.green();
-//         p[2] = rgb565_pixel.blue();
-//     }
-//     rgb
-// }
+// LE格式转换成BE格式
+pub fn rgb565_le_to_be(image:&mut [u8]){
+    for pix in image.chunks_mut(2){
+        let color = u16::from_le_bytes([pix[0], pix[1]]);
+        let bytes = color.to_be_bytes();
+        pix[0] = bytes[0];
+        pix[1] = bytes[1];
+    }
+}

@@ -1,9 +1,11 @@
 #![allow(unused)]
 
-use alloc::vec::{self, Vec};
-use embassy_rp::{gpio::{Output, Pin}, spi::{Async, Instance, Spi}};
-use embassy_time::Timer;
+use core::iter;
 
+use alloc::vec::{self, Vec};
+use embassy_rp::{gpio::{Level, Output, Pin}, peripherals::{DMA_CH0, DMA_CH1, PIN_13, PIN_14, PIN_4, PIN_6, PIN_7, SPI0}, spi::{Async, Instance, Spi}};
+use embassy_time::Timer;
+use anyhow::{anyhow, Result};
 //关于 st7735s LCD 屏幕的一些问题处理
 //https://hacperme.com/posts/notes/20230525_st7735s_notes/
 
@@ -280,7 +282,7 @@ where
         self.write_pixels_buffered(colors).await
     }
 
-    pub async fn draw_image_at(&mut self, x: u16, y: u16, image: &[u16], width: u16){
+    pub async fn draw_image_le_at(&mut self, image: &[u8], x: u16, y: u16, width: u16){
         for (y1, pixels) in image.chunks(width as usize).enumerate(){
             //垂直方向不能超出屏幕
             let sy = y+y1 as u16;
@@ -292,15 +294,26 @@ where
             if x as usize+line_width > self.height as usize{
                 line_width = self.height as usize - x as usize;
             }
-            let _ = self.set_pixels_buffered(x, sy, x+line_width as u16, sy+1, pixels[0..line_width].iter().map(|p| *p)).await;
+            let _ = self.set_pixels_buffered(x, sy, x+line_width as u16, sy+1, pixels[0..line_width].chunks(2).map(|v| u16::from_le_bytes([v[0], v[1]]))).await;
         }
     }
 
-    pub async fn clear_screen(&mut self, color: u16){
-        let mut colors = alloc::vec![color; self.width as usize];
-        for l in 0..self.height{
-            let _ = self.set_pixels_buffered(0, l as u16, self.width as u16, l as u16+1, colors.clone().into_iter()).await;
-        }
+    pub async fn draw_image_le(&mut self, image: &[u8], x:u16, y:u16, width: u16, height:u16){
+        let _ = self.set_pixels_buffered(x, y, x+width-1, y+height-1, image.chunks(2).map(|v| u16::from_le_bytes([v[0], v[1]]))).await;
+    }
+
+    pub async fn draw_image_be(&mut self, image: &[u8], x:u16, y:u16, width: u16, height:u16){
+        let _ = self.set_pixels_buffered(x, y, x+width-1, y+height-1, image.chunks(2).map(|v| u16::from_be_bytes([v[0], v[1]]))).await;
+    }
+
+    // pub async fn clear_screen(&mut self, color: u16){
+    //     let mut colors = iter::repeat(color).take(self.width as usize *self.height as usize);
+    //     let _ = self.set_pixels_buffered(0, 0, self.width as u16-1, self.height as u16-1, colors).await;
+    // }
+
+    pub async fn clear_rect(&mut self, color: u16, x: u16, y: u16, width: u16, height:u16){
+        let mut colors = iter::repeat(color).take(width as usize *height as usize);
+        let _ = self.set_pixels_buffered(x, y, x+width as u16-1, y+height as u16-1, colors).await;
     }
 }
 
@@ -387,3 +400,56 @@ where
 //         Size::new(self.width, self.height)
 //     }
 // }
+
+pub struct ST7735DisplayManager<'a>{
+    /*
+    GND <=> GND
+    VCC <=> 3V3
+    SCL <=> SCLK(GPIO6)
+    SDA <=> MOSI(GPIO7)
+    RES <=> RST(GPIO14)
+    DC  <=> DC(GPIO13)
+    CS  <=> GND
+    BLK <=> 不连接
+     */
+    pub display: ST7735<'a, SPI0, PIN_13, PIN_14>,
+}
+
+impl <'a> ST7735DisplayManager<'a>{
+    pub async fn new(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, dma_ch0: DMA_CH0, dma_ch1: DMA_CH1) -> Result<Self>{            
+        let spi_sclk = p6;
+        let spi_mosi = p7;
+        let spi_miso = p4;
+        let mut spi_cfg = embassy_rp::spi::Config::default();
+        spi_cfg.frequency = crate::DISPLAY_FREQ;
+        let spi: Spi<SPI0, Async> = Spi::new(spi, spi_sclk, spi_mosi, spi_miso, dma_ch0, dma_ch1, spi_cfg);
+
+        let dc = Output::new(p13, Level::Low);
+        let rst: Output<PIN_14> = Output::new(p14, Level::Low);
+        let screen_width = 128;
+        let screen_height = 160;
+        let mut disp = ST7735::new(spi, dc, Some(rst), true, false, screen_width, screen_height);
+        disp.init().await.map_err(|_| anyhow!("init error") )?;
+        disp.set_orientation(&Orientation::Landscape).await.map_err(|_| anyhow!("init error") )?;
+
+        Ok(Self {
+            display: disp
+        })
+    }
+
+    pub async fn display_image_le_at(&mut self, buf: &[u8], x: u16, y: u16, width: u16){
+        self.display.draw_image_le_at(buf, x, y, width).await;       
+    }
+
+    pub async fn display_image_le(&mut self, buf: &[u8], x:u16, y:u16, width: u16, height:u16){
+        self.display.draw_image_le(buf, x, y ,width, height).await;       
+    }
+
+    pub async fn display_image_be(&mut self, buf: &[u8], x:u16, y:u16, width: u16, height:u16){
+        self.display.draw_image_be(buf, x, y ,width, height).await;       
+    }
+
+    pub async fn clear_rect(&mut self, color: u16, x: u16, y: u16, width: u16, height:u16){
+        self.display.clear_rect(color, x, y, width, height).await;       
+    }
+}

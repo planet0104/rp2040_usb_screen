@@ -1,8 +1,10 @@
 mod params;
-mod utils;
+pub mod utils;
 mod controller;
 mod sweeper;
 mod mine;
+mod canvas;
 mod neural_net;
 mod vector_2d;
 pub use controller::Controller;
+pub use canvas::Canvas;

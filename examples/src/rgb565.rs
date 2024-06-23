@@ -36,33 +36,33 @@ impl Rgb565Pixel{
     }
 }
 
-pub fn rgb_image_to_rgb565(img: &RgbImage) -> Vec<u8>{
-    let mut rgb565 = vec![0u8; img.width() as usize * img.height() as usize * 2];
-    for (i, p) in img.pixels().enumerate(){
-        let rgb565_pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
+// pub fn rgb888_to_rgb565_u16(img: &[u8], width: usize, height: usize) -> Vec<u16>{
+//     let mut rgb565 = vec![0u16; width * height];
+//     for (i, p) in img.chunks(3).enumerate(){
+//         let rgb565_pixel: Rgb565Pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
+//         rgb565[i] = rgb565_pixel.0;
+//     }
+//     rgb565
+// }
+
+pub fn rgb888_to_rgb565_be(img: &[u8], width: usize, height: usize) -> Vec<u8>{
+    let mut rgb565 = Vec::with_capacity(width * height * 2);
+    for p in img.chunks(3){
+        let rgb565_pixel: Rgb565Pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
         let be_bytes = rgb565_pixel.0.to_be_bytes();
-        rgb565[i*2] = be_bytes[0];
-        rgb565[i*2+1] = be_bytes[1];
+        rgb565.push(be_bytes[0]);
+        rgb565.push(be_bytes[1]);
     }
     rgb565
 }
 
-pub fn rgb888_to_rgb565(img: &[u8], width: usize, height: usize) -> Vec<u8>{
-    let mut rgb565 = vec![0u8; width * height * 2];
-    for (i, p) in img.chunks(3).enumerate(){
+pub fn rgb888_to_rgb565_le(img: &[u8], width: usize, height: usize) -> Vec<u8>{
+    let mut rgb565 = Vec::with_capacity(width * height * 2);
+    for p in img.chunks(3){
         let rgb565_pixel: Rgb565Pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
         let be_bytes = rgb565_pixel.0.to_le_bytes();
-        rgb565[i*2] = be_bytes[0];
-        rgb565[i*2+1] = be_bytes[1];
-    }
-    rgb565
-}
-
-pub fn rgb888_to_rgb565_u16(img: &[u8], width: usize, height: usize) -> Vec<u16>{
-    let mut rgb565 = vec![0u16; width * height];
-    for (i, p) in img.chunks(3).enumerate(){
-        let rgb565_pixel: Rgb565Pixel = Rgb565Pixel::from_rgb(p[0], p[1], p[2]);
-        rgb565[i] = rgb565_pixel.0;
+        rgb565.push(be_bytes[0]);
+        rgb565.push(be_bytes[1]);
     }
     rgb565
 }

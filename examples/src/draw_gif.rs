@@ -1,12 +1,15 @@
 use std::io::Cursor;
-
-use nusb::Interface;
 use anyhow::Result;
-use image::{buffer::ConvertBuffer, RgbImage, RgbaImage};
+use image::{buffer::ConvertBuffer, imageops::resize, RgbImage, RgbaImage};
 
-use crate::usb_screen::draw_rgb_image;
-
-pub fn draw(interface: &Interface) -> Result<()>{
+pub fn draw(
+    #[cfg(feature = "usb-serial")]
+    port: &mut dyn serialport::SerialPort,
+    #[cfg(feature = "usb-raw")]
+    interface:&nusb::Interface,
+    screen_width: u16,
+    screen_height: u16,
+) -> Result<()>{
    
     let file = Cursor::new(include_bytes!("../assets/tothesky.gif"));
 
@@ -27,12 +30,16 @@ pub fn draw(interface: &Interface) -> Result<()>{
         }
         let img = RgbaImage::from_raw(screen.width() as u32, screen.height() as u32, data.to_vec()).unwrap();
         let rgb:RgbImage = img.convert();
+        let rgb = resize(&rgb, screen_width as u32, screen_height as u32, image::imageops::FilterType::Triangle);
         frames.push(rgb);
     }
 
     loop{
-        for frame in &frames{
-            draw_rgb_image(0, 0, frame, interface)?;
+        for frame in frames.iter(){
+            #[cfg(feature = "usb-serial")]
+            crate::usb_screen::draw_rgb_image_serial(0, 0, frame, port)?;
+            #[cfg(feature = "usb-raw")]
+            crate::usb_screen::draw_rgb_image(0, 0, frame, interface)?;
         }
     }
 }

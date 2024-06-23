@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use embassy_rp::clocks::RoscRng;
 
-use crate::canvas::Canvas;
+use super::canvas::Canvas;
 use crate::rgb565::Rgb565Pixel;
 
 use super::mine::Mine;
@@ -71,7 +71,7 @@ impl Controller{
         true
     }
 
-    pub fn render<'a>(&mut self, canvas: &mut Canvas<'a>) {
+    pub fn render(&mut self, canvas: &mut Canvas) {
         //清空屏幕
         canvas.clear(Rgb565Pixel::from_rgb(0, 0, 0).0);
         //绘制地雷

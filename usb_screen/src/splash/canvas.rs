@@ -1,11 +1,18 @@
+use alloc::vec::Vec;
+use super::params::{WINDOW_HEIGHT, WINDOW_WIDTH};
 
-pub struct Canvas<'a>{
-    pub buf: &'a mut [u16],
+
+pub struct Canvas{
+    pub buf: Vec<u16>,
     pub width: usize,
     pub height: usize,
 }
 
-impl <'a> Canvas<'a>{
+impl Canvas{
+    pub fn new() -> Self{
+        Self { buf: alloc::vec![0u16; (WINDOW_WIDTH*WINDOW_HEIGHT) as usize], width: WINDOW_WIDTH as usize, height: WINDOW_HEIGHT as usize }
+    }
+    
     pub fn clear(&mut self, color: u16){
         self.buf.fill(color);
     }
