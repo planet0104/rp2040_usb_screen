@@ -2,23 +2,40 @@ use futures_lite::future::block_on;
 use image::{Rgb, RgbImage};
 use nusb::Interface;
 use anyhow::Result;
-use serialport::SerialPort;
+use serialport::{SerialPort, SerialPortInfo, SerialPortType};
 
 use crate::rgb565::rgb888_to_rgb565_be;
 
-const BULK_OUT_EP: u8 = 0x01;
-const BULK_IN_EP: u8 = 0x81;
+pub const BULK_OUT_EP: u8 = 0x01;
+pub const BULK_IN_EP: u8 = 0x81;
 
-pub fn open_usb_screen(product_string:&str, serial_number:&str) -> Result<Option<Interface>>{
+pub fn open_usb_screen() -> Result<Option<Interface>>{
     let mut di = nusb::list_devices()?;
-    match di.find(|d| d.product_string() == Some(product_string) && d.serial_number() == Some(serial_number)){
-        Some(di) => {
-            let device = di.open()?;
+    for d in di{
+        if d.serial_number().unwrap_or("").starts_with("USBSCR"){
+            let device = d.open()?;
             let interface = device.claim_interface(0)?;
-            Ok(Some(interface))
+            return Ok(Some(interface));
         }
-        None => Ok(None)
     }
+    Ok(None)
+}
+
+pub fn find_usb_serial_device() -> Result<Vec<SerialPortInfo>>{
+    let ports: Vec<SerialPortInfo> = serialport::available_ports().unwrap_or(vec![]);
+    let mut usb_screen = vec![];
+    for p in ports {
+        match p.port_type.clone(){
+            SerialPortType::UsbPort(port) => {
+                if port.serial_number.unwrap_or("".to_string()).starts_with("USBSCR"){
+                    usb_screen.push(p);
+                    continue;
+                }
+            }
+            _ => ()
+        }
+    }
+    Ok(usb_screen)
 }
 
 pub fn clear_screen(color: Rgb<u8>, interface:&Interface, width: u16, height: u16) -> anyhow::Result<()>{

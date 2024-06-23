@@ -1,32 +1,34 @@
-use std::{any::Any, time::Instant};
-
 use anyhow::Result;
-use serialport::SerialPortType;
+use futures_lite::future::block_on;
 
-fn main() -> Result<()>{
-    let ports = serialport::available_ports().unwrap_or(vec![]);
-    let mut usb_screen = vec![];
-    for p in ports {
-        match p.port_type.clone(){
-            SerialPortType::UsbPort(port) => {
-                if port.serial_number.unwrap_or("".to_string()) == "62985215"{
-                    usb_screen.push(p);
-                    continue;
-                }
-            }
-            _ => ()
-        }
-    }
+use crate::usb_screen::{find_usb_serial_device, open_usb_screen, BULK_OUT_EP};
 
-    println!("usb screen数量:{}", usb_screen.len());
+pub fn reboot_serial() -> Result<()>{
+    let devices = find_usb_serial_device()?;
 
-    if usb_screen.len() == 0{
+    println!("usb screen数量:{}", devices.len());
+
+    if devices.len() == 0{
         return Ok(());
     }
     
-    let mut screen = serialport::new(&usb_screen[0].port_name, 115_200).open()?;
+    let mut screen = serialport::new(&devices[0].port_name, 115_200).open()?;
 
     const BOOT_USB:u64 = 7093010483740242786;
     screen.write(&BOOT_USB.to_be_bytes())?;
+    Ok(())
+}
+
+pub fn reboot_usb_raw() -> Result<()>{
+    let devices = open_usb_screen()?;
+
+    if devices.is_none(){
+        return Ok(());
+    }
+
+    let interface = devices.unwrap();
+    
+    const BOOT_USB:u64 = 7093010483740242786;
+    block_on(interface.bulk_out(BULK_OUT_EP, BOOT_USB.to_be_bytes().into())).status?;
     Ok(())
 }

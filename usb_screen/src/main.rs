@@ -33,6 +33,23 @@ use panic_halt as _;
 
 pub const DISPLAY_FREQ: u32 = 64_000_000;
 
+#[cfg(feature = "serial-num-1")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000001";
+#[cfg(feature = "serial-num-2")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000002";
+#[cfg(feature = "serial-num-3")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000003";
+#[cfg(feature = "serial-num-4")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000004";
+#[cfg(feature = "serial-num-5")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000005";
+#[cfg(feature = "serial-num-6")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000006";
+#[cfg(feature = "serial-num-7")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000007";
+#[cfg(feature = "serial-num-8")]
+static mut SERIAL_NUMBER: [u8; 16] = *b"USBSCR0000000008";
+
 type ImageInfo = (Vec<u8>, u16, u16, u16, u16);
 
 static mut CORE1_STACK: Stack<4096> = Stack::new();
@@ -115,7 +132,16 @@ fn main() -> ! {
 
     let p = embassy_rp::init(Default::default());
 
-    
+    //屏幕宽高写入串号中
+    #[cfg(feature = "st7735-128x160")]
+    let screen_size = "160x128;";
+    #[cfg(feature = "st7789-240x240")]
+    let screen_size = "240x240;";
+    #[cfg(feature = "st7789-240x320")]
+    let screen_size = "320x240;";
+
+    unsafe{ SERIAL_NUMBER[6..6+screen_size.len()].copy_from_slice(screen_size.as_bytes()); }
+
     spawn_core1(
         p.CORE1,
         unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
@@ -156,8 +182,10 @@ async fn core0_task_usb_serial(usb: USB, spawner: Spawner) {
     let config = {
         let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
         config.manufacturer = Some("planet");
-        config.product = Some("USB Screen");
-        config.serial_number = Some("62985215");
+        config.product = Some("USB Serial Screen");
+        //串号不能重复
+        let serial_number: &'static mut str = unsafe { core::str::from_utf8_unchecked_mut(&mut SERIAL_NUMBER[..]) };
+        config.serial_number = Some(serial_number);
         config.max_power = 500;
         config.max_packet_size_0 = 64;
 
@@ -308,7 +336,8 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
     let mut config = Config::new(0xc0de, 0xcafe);
     config.manufacturer = Some("planet");
     config.product = Some("USB Screen");
-    config.serial_number = Some("62985215");
+    let serial_number: &'static mut str = unsafe { core::str::from_utf8_unchecked_mut(&mut SERIAL_NUMBER[..]) };
+    config.serial_number = Some(serial_number);
     config.max_power = 500;
     config.max_packet_size_0 = 64;
 

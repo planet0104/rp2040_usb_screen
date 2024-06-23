@@ -2,17 +2,23 @@ use std::{thread::sleep, time::{Duration, Instant}};
 use anyhow::Result;
 use image::open;
 use rgb565::rgb888_to_rgb565_le;
-use serialport::{SerialPortInfo, SerialPortType};
+use usb_screen::find_usb_serial_device;
 mod rgb565;
 mod rgb2yuv;
 mod usb_screen;
 mod draw_bitmap;
 mod clock;
 mod draw_gif;
+mod reboot;
 
 #[cfg(feature = "usb-serial")]
 fn main() -> Result<()>{
     // test_serial()?;
+
+    // use reboot::reboot_serial;
+    // reboot_serial()?;
+    
+
     let usb_screens = find_usb_serial_device()?;
 
     if usb_screens.len() == 0{
@@ -39,7 +45,10 @@ fn main() -> Result<()>{
 
 #[cfg(feature = "usb-raw")]
 fn main() -> Result<()>{
-    let interface = usb_screen::open_usb_screen("USB Screen", "62985215")?.unwrap();
+    // use reboot::reboot_usb_raw;
+    // reboot_usb_raw()?;
+
+    let interface = usb_screen::open_usb_screen()?.unwrap();
 
     let width = 160;
     let height = 128;
@@ -53,25 +62,6 @@ fn main() -> Result<()>{
     draw_gif::draw(&interface, width, height)?;
 
     Ok(())
-}
-
-fn find_usb_serial_device() -> Result<Vec<SerialPortInfo>>{
-    let ports: Vec<SerialPortInfo> = serialport::available_ports().unwrap_or(vec![]);
-    let mut usb_screen = vec![];
-    for p in ports {
-        match p.port_type.clone(){
-            SerialPortType::UsbPort(port) => {
-                if port.serial_number.unwrap_or("".to_string()) == "62985215"{
-                    usb_screen.push(p);
-                    continue;
-                }
-            }
-            _ => ()
-        }
-    }
-
-    println!("usb screen数量:{}", usb_screen.len());
-    Ok(usb_screen)
 }
 
 fn lz4test() -> Result<()> {
@@ -110,7 +100,7 @@ fn test_serial() -> Result<()>{
 }
 
 fn test_usb() -> Result<()> {
-    let interface = usb_screen::open_usb_screen("USB Screen", "62985215")?.unwrap();
+    let interface = usb_screen::open_usb_screen()?.unwrap();
 
     let img = open("./assets/160x128.png")?.to_rgb8();
     let t = Instant::now();

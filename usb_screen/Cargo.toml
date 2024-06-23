@@ -5,12 +5,20 @@ version = "1.1.0"
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["st7735-128x160", "usb-serial"]
+default = ["st7789-240x320", "usb-serial", "serial-num-1"]
 st7789-240x320 = ["display-interface"]
 st7789-240x240 = ["display-interface"]
 st7735-128x160 = []
 usb-serial = []
 usb-raw = []
+serial-num-1 = []
+serial-num-2 = []
+serial-num-3 = []
+serial-num-4 = []
+serial-num-5 = []
+serial-num-6 = []
+serial-num-7 = []
+serial-num-8 = []
 
 [dependencies]
 embassy-embedded-hal = { version = "0.1.0" }
