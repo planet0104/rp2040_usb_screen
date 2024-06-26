@@ -63,22 +63,30 @@ USB Raw和USB虚拟串口方式，协议都是相同的。图像数据格式为R
 
 ## 编译uf2固件
 
-开启对应的features来编译对应的屏幕类型以及传输方式的uf2固件
+开启对应的features来编译对应的屏幕类型以及传输方式的uf2固件, serial-num-N 代表生成的串号结尾的编号，N=1~8
 
 ```shell
-# 编译 st7735 160x128 的 USB串口模式传输的uf2
-cargo build --release --no-default-features --features "st7735-128x160,usb-serial"
-elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBSerial.uf2
-# 编译 st7735 160x128 的 USB Raw模式传输的uf2
-cargo build --release --no-default-features --features "st7735-128x160,usb-raw"
-elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBRaw.uf2
+:: 编译 st7735 160x128 的 USB串口模式传输的uf2
+cargo build --release --no-default-features --features "st7735-128x160,usb-serial,serial-num-1"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBSerial_sn1.uf2
+cargo build --release --no-default-features --features "st7735-128x160,usb-serial,serial-num-2"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBSerial_sn2.uf2
+:: 编译 st7735 160x128 的 USB Raw模式传输的uf2
+cargo build --release --no-default-features --features "st7735-128x160,usb-raw,serial-num-3"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBRaw_sn3.uf2
+cargo build --release --no-default-features --features "st7735-128x160,usb-raw,serial-num-4"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_160x128_USBRaw_sn4.uf2
 
-# 编译 st7789 240x320 的 USB串口模式传输的uf2
-cargo build --release --no-default-features --features "st7789-240x320,usb-serial"
-elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBSerial.uf2
-# 编译 st7789 240x320 的 USB Raw模式传输的uf2
-cargo build --release --no-default-features --features "st7789-240x320,usb-raw"
-elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBRaw.uf2
+:: 编译 st7789 240x320 的 USB串口模式传输的uf2
+cargo build --release --no-default-features --features "st7789-240x320,usb-serial,serial-num-5"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBSerial_sn5.uf2
+cargo build --release --no-default-features --features "st7789-240x320,usb-serial,serial-num-6"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBSerial_sn6.uf2
+:: 编译 st7789 240x320 的 USB Raw模式传输的uf2
+cargo build --release --no-default-features --features "st7789-240x320,usb-raw,serial-num-7"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBRaw_sn7.uf2
+cargo build --release --no-default-features --features "st7789-240x320,usb-raw,serial-num-8"
+elf2uf2-rs .\target\thumbv6m-none-eabi\release\usb_screen .\uf2\usb_screen_240x320_USBRaw_sn8.uf2
 ```
 
 ## 运行示例

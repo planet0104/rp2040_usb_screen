@@ -72,6 +72,8 @@ const IMAGE_AA:u64 = 7596835243154170209;
 const IMAGE_BB:u64 = 7596835243154170466;
 //重启到U盘模式命令(8字节)
 const BOOT_USB:u64 = 7093010483740242786;
+//读取设备信息(8字节) 串口读取信息使用
+const READ_INF:u64 = u64::from_be_bytes(*b"ReadInfo");
 const MAGIC_NUM_LEN: usize = 8;
 
 //embassy-executor使用12K, 堆内存使用剩余内存
@@ -293,15 +295,16 @@ async fn core0_task_usb_serial(usb: USB, spawner: Spawner) {
                 }
             }else if magic_num == BOOT_USB{
                 reset_to_usb_boot(0, 0);
+            }else if magic_num == READ_INF{
+                //返回串口号
+                let serial_number: &'static mut str = unsafe { core::str::from_utf8_unchecked_mut(&mut SERIAL_NUMBER[..]) };
+                let _ = class.write_packet(serial_number.as_bytes()).await;
             }else{
                 //图像传输中
                 if image_buf.len() <320*240*2{
                     image_buf.extend_from_slice(data);
                 }
             }
-            //返回字符串
-            // let msg = format!("{total}");
-            // let _ = class.write_packet(msg.as_byte_slice()).await;
         }
     }
 }
