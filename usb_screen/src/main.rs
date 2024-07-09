@@ -282,14 +282,14 @@ async fn core0_task_usb_serial(usb: USB, spawner: Spawner) {
                         }
                         embassy_time::Timer::after_millis(1).await;
                     }
-                    USB_CHANNEL.send((image_buf.clone(), image_x, image_y, image_width, image_height)).await;
+                    let _ = USB_CHANNEL.try_send((image_buf.clone(), image_x, image_y, image_width, image_height));
                     image_buf.clear();
                 }
                 
                 #[cfg(feature = "st7735-128x160")]
                 {
                     if let Ok(image) = lz4_flex::decompress_size_prepended(&image_buf){
-                        USB_CHANNEL.send((image, image_x, image_y, image_width, image_height)).await;
+                        let _ = USB_CHANNEL.try_send((image, image_x, image_y, image_width, image_height));
                     }
                     image_buf.clear();
                 }
@@ -449,7 +449,7 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
                                     embassy_time::Timer::after_millis(1).await;
                                 }
                                 //压缩图像结束，发送数据到core1线程
-                                USB_CHANNEL.send((buf.clone(), image_x, image_y, image_width, image_height)).await;
+                                let _ = USB_CHANNEL.try_send((buf.clone(), image_x, image_y, image_width, image_height));
                                 //清空数组
                                 buf.clear();
                             }
@@ -460,7 +460,7 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
                                 let image = lz4_flex::decompress_size_prepended(&buf).unwrap();
                                 buf.clear();
                                 //解压后的图像结束，发送数据到core1线程
-                                USB_CHANNEL.send((image, image_x, image_y, image_width, image_height)).await;
+                                let _ = USB_CHANNEL.try_send((image, image_x, image_y, image_width, image_height));
                             }
 
                         }else if magic_num == BOOT_USB{
@@ -487,7 +487,6 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
 #[embassy_executor::task]
 async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, dma_ch0: embassy_rp::peripherals::DMA_CH0, dma_ch1: embassy_rp::peripherals::DMA_CH1) {
     use byte_slice_cast::AsByteSlice;
-
 
     let mut display_manager = st7735::ST7735DisplayManager::new(spi, p6, p7, p4, p13, p14, dma_ch0, dma_ch1).await.unwrap();
 
