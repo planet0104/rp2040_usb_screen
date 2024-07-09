@@ -4,7 +4,7 @@ version = "1.1.0"
 edition = "2021"
 
 [features]
-default = ["usb-serial"]
+default = ["usb-raw"]
 usb-serial = []
 usb-raw = []
 
@@ -26,3 +26,6 @@ opt-level = "z"
 lto = true
 panic = "abort"
 codegen-units = 1
+
+[profile.dev]
+strip = true

@@ -48,7 +48,9 @@ fn main() -> Result<()>{
     // use reboot::reboot_usb_raw;
     // reboot_usb_raw()?;
 
+    println!("open usb usb screen...");
     let interface = usb_screen::open_usb_screen()?.unwrap();
+    println!("open usb usb OK number:{}", interface.interface_number());
 
     let width = 160;
     let height = 128;
