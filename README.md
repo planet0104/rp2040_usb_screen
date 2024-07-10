@@ -7,6 +7,30 @@ RP2040 USB屏幕
 
 目前支持 ST7735 128x160 和 ST7789 320x240两种屏幕
 
+### ST7735接线方式
+```
+    GND <=> GND
+    VCC <=> 3V3
+    SCL <=> SCLK(GPIO6)
+    SDA <=> MOSI(GPIO7)
+    RES <=> RST(GPIO14)
+    DC  <=> DC(GPIO13)
+    CS  <=> GND
+    BLK <=> 不连接
+```
+
+### ST7789接线方式
+```
+    GND   <=> GND
+    VCC   <=> 3V3
+    SCL   <=> PIN6(clk)
+    SDA   <=> PIN7(mosi)
+    RESET <=> PIN14(rst)
+    AO    <=> PIN13
+    CS    <=> PIN9
+    BL    <=> 5V
+```
+
 ## 传输速度
 
 使用USB虚拟串口 / USB Raw两种传输方式，传输速度最快 512K/S。
