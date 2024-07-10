@@ -3,6 +3,14 @@
 
 RP2040 USB屏幕
 
+
+# 图文教程:
+
+# [https://zhuanlan.zhihu.com/p/698789562](https://zhuanlan.zhihu.com/p/698789562)
+
+# 视频教程
+# [https://www.bilibili.com/video/BV1eTTwe6EFU/?vd_source=a2700de3db7bd5f0117df32bdd5cef9f](https://www.bilibili.com/video/BV1eTTwe6EFU/?vd_source=a2700de3db7bd5f0117df32bdd5cef9f)
+
 ## 支持的屏幕型号
 
 目前支持 ST7735 128x160 和 ST7789 320x240两种屏幕
