@@ -3,9 +3,41 @@
 
 RP2040 USB屏幕
 
+
+# 图文教程:
+
+# [https://zhuanlan.zhihu.com/p/698789562](https://zhuanlan.zhihu.com/p/698789562)
+
+# 视频教程
+# [https://www.bilibili.com/video/BV1eTTwe6EFU/?vd_source=a2700de3db7bd5f0117df32bdd5cef9f](https://www.bilibili.com/video/BV1eTTwe6EFU/?vd_source=a2700de3db7bd5f0117df32bdd5cef9f)
+
 ## 支持的屏幕型号
 
 目前支持 ST7735 128x160 和 ST7789 320x240两种屏幕
+
+### ST7735接线方式
+```
+    GND <=> GND
+    VCC <=> 3V3
+    SCL <=> SCLK(GPIO6)
+    SDA <=> MOSI(GPIO7)
+    RES <=> RST(GPIO14)
+    DC  <=> DC(GPIO13)
+    CS  <=> GND
+    BLK <=> 不连接
+```
+
+### ST7789接线方式
+```
+    GND   <=> GND
+    VCC   <=> 3V3
+    SCL   <=> PIN6(clk)
+    SDA   <=> PIN7(mosi)
+    RESET <=> PIN14(rst)
+    AO    <=> PIN13
+    CS    <=> PIN9
+    BL    <=> 5V
+```
 
 ## 传输速度
 
