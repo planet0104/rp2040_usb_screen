@@ -20,7 +20,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embedded_alloc::Heap;
 use static_cell::StaticCell;
-#[cfg(feature = "st7735-128x160")]
+#[cfg(any(feature = "st7735-128x160", feature = "st7735-128x128"))]
 mod st7735;
 #[cfg(any(feature = "st7789-240x320", feature = "st7789-240x240"))]
 mod st7789;
@@ -137,6 +137,8 @@ fn main() -> ! {
     //屏幕宽高写入串号中
     #[cfg(feature = "st7735-128x160")]
     let screen_size = "160x128;";
+    #[cfg(feature = "st7735-128x128")]
+    let screen_size = "128x128;";
     #[cfg(feature = "st7789-240x240")]
     let screen_size = "240x240;";
     #[cfg(feature = "st7789-240x320")]
@@ -150,7 +152,7 @@ fn main() -> ! {
         move || {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
-                #[cfg(feature = "st7735-128x160")]
+                #[cfg(any(feature = "st7735-128x160", feature = "st7735-128x128"))]
                 {
                     spawner.spawn(core1_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.DMA_CH0, p.DMA_CH1)).unwrap();
                 }
@@ -286,7 +288,7 @@ async fn core0_task_usb_serial(usb: USB, spawner: Spawner) {
                     image_buf.clear();
                 }
                 
-                #[cfg(feature = "st7735-128x160")]
+                #[cfg(any(feature = "st7735-128x160", feature = "st7735-128x128"))]
                 {
                     if let Ok(image) = lz4_flex::decompress_size_prepended(&image_buf){
                         let _ = USB_CHANNEL.try_send((image, image_x, image_y, image_width, image_height));
@@ -455,7 +457,7 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
                             }
                             
                             //160x128屏幕，在core0解压，core1绘制速度最快
-                            #[cfg(feature = "st7735-128x160")]
+                            #[cfg(any(feature = "st7735-128x160", feature = "st7735-128x128"))]
                             {
                                 let image = lz4_flex::decompress_size_prepended(&buf).unwrap();
                                 buf.clear();
@@ -483,7 +485,7 @@ async fn core0_task_usb_raw(usb: USB, _spawner: Spawner) {
     join(usb_fut, echo_fut).await;
 }
 
-#[cfg(feature = "st7735-128x160")]
+#[cfg(any(feature = "st7735-128x160",feature = "st7735-128x128"))]
 #[embassy_executor::task]
 async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, dma_ch0: embassy_rp::peripherals::DMA_CH0, dma_ch1: embassy_rp::peripherals::DMA_CH1) {
     use byte_slice_cast::AsByteSlice;

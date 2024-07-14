@@ -5,10 +5,12 @@ version = "1.1.0"
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["st7789-240x320", "usb-serial", "serial-num-1"]
+default = ["st7789-240x240", "usb-raw", "serial-num-1"]
+# default = ["st7735-128x128", "usb-raw", "serial-num-1"]
 st7789-240x320 = ["display-interface"]
 st7789-240x240 = ["display-interface"]
 st7735-128x160 = []
+st7735-128x128 = []
 usb-serial = []
 usb-raw = []
 serial-num-1 = []
