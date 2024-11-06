@@ -534,7 +534,7 @@ async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14
     use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
     use embassy_rp::{clocks::RoscRng, gpio::{Level, Output}, spi::{self, Blocking, Spi}};
     use embassy_time::{Duration, Timer};
-    use rgb565::Rgb565Pixel;
+    use rgb565::rgb_to_rgb565;
     use splash::utils::random_usize;
     use st7789::{interface::SPIDeviceInterface, Orientation, ST7789};
     use embassy_sync::blocking_mutex::raw::NoopRawMutex;
@@ -593,7 +593,7 @@ async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14
     // initialize
     display.init().await.unwrap();
     display.set_orientation(Orientation::Landscape).unwrap();
-    st7789::interface::clear_rect(&mut display, Rgb565Pixel::from_rgb(0, 0, 0).0, 0, 0, screen_width, screen_height);
+    st7789::interface::clear_rect(&mut display, rgb_to_rgb565(0, 0, 0), 0, 0, screen_width, screen_height);
     
     let mut frame_received = false;
     let mut clear = false;
@@ -624,8 +624,8 @@ async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14
                     let r = random_usize(&mut RoscRng, 20, 255) as u8;
                     let g = random_usize(&mut RoscRng, 20, 255) as u8;
                     let b = random_usize(&mut RoscRng, 20, 255) as u8;
-                    let white = Rgb565Pixel::from_rgb(r, g, b).0;
-                    let black = Rgb565Pixel::from_rgb(0, 0, 0).0;
+                    let white = rgb_to_rgb565(r, g, b);
+                    let black = rgb_to_rgb565(0, 0, 0);
 
                     let color = if clear{
                         black

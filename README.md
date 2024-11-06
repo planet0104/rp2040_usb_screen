@@ -39,6 +39,18 @@ RP2040 USB屏幕
     BL    <=> 5V
 ```
 
+### ST7789 240x240 接线方式
+```
+    GND   <=> GND
+    VCC   <=> 3V3
+    SCL   <=> PIN6(clk)
+    SDA   <=> PIN7(mosi)
+    RESET <=> PIN14(rst)
+    DC    <=> PIN13
+    CS    <=> PIN9
+    BL    <=> 5V
+```
+
 ## 传输速度
 
 使用USB虚拟串口 / USB Raw两种传输方式，传输速度最快 512K/S。

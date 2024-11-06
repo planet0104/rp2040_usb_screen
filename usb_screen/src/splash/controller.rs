@@ -1,8 +1,10 @@
 use alloc::vec::Vec;
 use embassy_rp::clocks::RoscRng;
+use embedded_graphics::pixelcolor::raw::RawU16;
+use embedded_graphics::pixelcolor::Rgb555;
+use embedded_graphics::prelude::RawData;
 
 use super::canvas::Canvas;
-use crate::rgb565::Rgb565Pixel;
 
 use super::mine::Mine;
 use super::params::{ MINE_SCALE, WINDOW_WIDTH, WINDOW_HEIGHT, NUM_MINES };
@@ -73,7 +75,7 @@ impl Controller{
 
     pub fn render(&mut self, canvas: &mut Canvas) {
         //清空屏幕
-        canvas.clear(Rgb565Pixel::from_rgb(0, 0, 0).0);
+        canvas.clear(RawU16::from(Rgb555::new(0, 0, 0)).into_inner());
         //绘制地雷
         for mine in self.mines.iter_mut(){
             mine.render(canvas);
