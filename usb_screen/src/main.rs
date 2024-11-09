@@ -22,7 +22,9 @@ use embedded_alloc::Heap;
 use static_cell::StaticCell;
 #[cfg(any(feature = "st7735-128x160", feature = "st7735-128x128"))]
 mod st7735;
-#[cfg(any(feature = "st7789-240x320", feature = "st7789-240x240"))]
+#[cfg(feature = "st7789-240x240")]
+mod st7789_240x240;
+#[cfg(feature = "st7789-240x320")]
 mod st7789;
 // mod rgb2yuv;
 mod rgb565;
@@ -156,7 +158,11 @@ fn main() -> ! {
                 {
                     spawner.spawn(core1_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.DMA_CH0, p.DMA_CH1)).unwrap();
                 }
-                #[cfg(any(feature = "st7789-240x320", feature = "st7789-240x240"))]
+                #[cfg(feature = "st7789-240x240")]
+                {
+                    spawner.spawn(core1_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.PIN_15, p.PIN_9)).unwrap();
+                }
+                #[cfg(feature = "st7789-240x320")]
                 {
                     spawner.spawn(core1_task(p.SPI0, p.PIN_6, p.PIN_7, p.PIN_4, p.PIN_13, p.PIN_14, p.PIN_9)).unwrap();
                 }
@@ -525,8 +531,10 @@ async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14
     }
 }
 
+
+
 //参考代码：https://github.com/embassy-rs/embassy/blob/main/examples/rp/src/bin/spi_display.rs
-#[cfg(any(feature = "st7789-240x320", feature = "st7789-240x240"))]
+#[cfg(feature = "st7789-240x320")]
 #[embassy_executor::task]
 async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, display_cs: embassy_rp::peripherals::PIN_9) {
     use core::{cell::RefCell, f32::consts::PI};
@@ -675,6 +683,172 @@ async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14
 
         //调用draw_rgb565_u8速度最快，使用Big-Endian
         st7789::interface::draw_rgb565_u8(&mut display, &image, x, y, width, height);
+        //释放内存
+        drop(image);
+        // DRAW_CHANNEL.send(0).await;
+        *lock.get_mut() = false;
+        drop(lock);
+    }
+}
+
+#[cfg(feature = "st7789-240x240")]
+#[embassy_executor::task]
+async fn core1_task(spi: SPI0, p6: PIN_6, p7: PIN_7, p4: PIN_4, p13: PIN_13, p14: PIN_14, p15: embassy_rp::peripherals::PIN_15, p9: embassy_rp::peripherals::PIN_9) {
+    use core::{cell::RefCell, f32::consts::PI};
+
+    use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
+    use embassy_rp::{clocks::RoscRng, gpio::{Level, Output}, spi::{self, Blocking, Spi}};
+    use embassy_time::{Duration, Timer};
+    use rgb565::rgb_to_rgb565;
+    use splash::utils::random_usize;
+    // use st7789::{interface::SPIDeviceInterface, Orientation, ST7789};
+    use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+    use embassy_sync::blocking_mutex::Mutex;
+    use micromath::F32Ext;
+    use st7789::ST7789;
+
+    /*
+     ST7789 240*240
+        GND
+        VCC
+        SCL > clk (PIN6)
+        SDA > mosi (PIN7)
+        RESET > rst (PIN14)
+        DC > dc(PIN13)
+        CS > cs(PIN9)
+        BL > bl(5V) 
+     */
+    
+    let bl = p15;
+    let rst = p14;
+    let display_cs = p9;
+    let dcx = p13;
+    let mosi = p7;
+    let clk = p6;
+
+    // create SPI
+    let mut display_config = spi::Config::default();
+    display_config.frequency = DISPLAY_FREQ;
+    display_config.phase = spi::Phase::CaptureOnSecondTransition;
+    display_config.polarity = spi::Polarity::IdleHigh;
+
+    let spi: Spi<'_, _, Blocking> = Spi::new_blocking_txonly(spi, clk, mosi, display_config.clone());
+    let spi_bus: Mutex<NoopRawMutex, _> = Mutex::new(RefCell::new(spi));
+
+    let display_spi = SpiDeviceWithConfig::new(&spi_bus, Output::new(display_cs, Level::High), display_config);
+
+    let dcx = Output::new(dcx, Level::Low);
+    let rst = Output::new(rst, Level::Low);
+    // dcx: 0 = command, 1 = data
+
+    // Enable LCD backlight
+    let bl = Output::new(bl, Level::High);
+
+    // display interface abstraction from SPI and DC
+    let di = st7789_240x240::SPIDeviceInterface::new(display_spi, dcx);
+
+    // create driver
+    #[cfg(feature = "st7789-240x320")]
+    let mut display = ST7789::ST7789::new(di, Some(rst), Some(bl), 240, 320);
+    #[cfg(feature = "st7789-240x240")]
+    let mut display = ST7789::new(di, Some(rst), Some(bl), 240, 240);
+
+    #[cfg(feature = "st7789-240x320")]
+    let screen_width = 320;
+    #[cfg(feature = "st7789-240x320")]
+    let screen_height = 240;
+    #[cfg(feature = "st7789-240x240")]
+    let screen_width = 240;
+    #[cfg(feature = "st7789-240x240")]
+    let screen_height = 240;
+
+    // initialize
+    // initialize
+    display.init(&mut embassy_time::Delay).unwrap();
+    // set default orientation
+    display.set_orientation(st7789::Orientation::Landscape).unwrap();
+    st7789_240x240::clear_rect(&mut display, rgb_to_rgb565(0, 0, 0), 0, 0, screen_width, screen_height);
+    
+    let mut frame_received = false;
+    let mut clear = false;
+    let mut t = 3.;
+    let mut d = 100.;
+    let mut cx = 160.;
+    let mut cy = 120.;
+    let mut scale = 5.0;
+    let mut depress = 5.0;
+
+    loop {
+        //没有接收到任何图像时，循环绘制图案
+        let (compressed, x, y, width, height) = if !frame_received{
+            match USB_CHANNEL.try_receive(){
+                Ok(ret) => {
+                    frame_received = true;
+                    ret
+                }
+                Err(_) => {
+                    if !clear{
+                        t = random_usize(&mut RoscRng, 3, 8) as f32;
+                        d = random_usize(&mut RoscRng, 40, 100) as f32;
+                        cx = random_usize(&mut RoscRng, 150, 200) as f32;
+                        cy = random_usize(&mut RoscRng, 100, 120) as f32;
+                        scale = random_usize(&mut RoscRng, 4, 10) as f32;
+                        depress = random_usize(&mut RoscRng, 3, 8) as f32;
+                    }
+                    let r = random_usize(&mut RoscRng, 20, 255) as u8;
+                    let g = random_usize(&mut RoscRng, 20, 255) as u8;
+                    let b = random_usize(&mut RoscRng, 20, 255) as u8;
+                    let white = rgb_to_rgb565(r, g, b);
+                    let black = rgb_to_rgb565(0, 0, 0);
+
+                    let color = if clear{
+                        black
+                    }else{
+                        white
+                    };
+
+                    let mut a = 0.0;
+                    while a < PI * 2.0 {
+                        let b = d + d / depress * (3.0 * t * a).sin();
+                        let c = b * (1.0 / 2.0 + 1.0 / 2.0 * (t * a).sin());
+
+                        let x = cx + c * a.cos() * scale / 5.0;
+                        let y = cy - c * a.sin();
+                        
+                        st7789_240x240::clear_rect(&mut display, color, x as u16, y as u16, 1, 1);
+
+                        a += PI / (80.0 * t);
+                    }
+                    clear = !clear;
+                    if !clear{
+                        // Timer::after(Duration::from_secs(1)).await;
+                    }else{
+                        Timer::after(Duration::from_secs(3)).await;
+                    }
+                    continue;
+                }
+            }
+        }else{
+            //一旦从USB接收到图像，就一直等待图像到达
+            USB_CHANNEL.receive().await
+        };
+
+        let mut lock = DISPLAY_LOCK.lock().await;
+        *lock.get_mut() = true;
+
+        //解压 如果是串口传输，有可能出现错误帧，这里要进行判断
+        let image = match lz4_flex::decompress_size_prepended(&compressed){
+            Err(_err) => {
+                *lock.get_mut() = false;
+                drop(lock);
+                continue;
+            }
+            Ok(image) => image
+        };
+        drop(compressed);
+
+        //调用draw_rgb565_u8速度最快，使用Big-Endian
+        st7789_240x240::draw_rgb565_u8(&mut display, &image, x, y, width, height);
         //释放内存
         drop(image);
         // DRAW_CHANNEL.send(0).await;

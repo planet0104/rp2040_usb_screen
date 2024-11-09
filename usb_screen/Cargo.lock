@@ -538,9 +538,19 @@ checksum = "0649998afacf6d575d126d83e68b78c0ab0e00ca2ac7e9b3db11b4cbe8274ef0"
 dependencies = [
  "az",
  "byteorder",
- "embedded-graphics-core",
+ "embedded-graphics-core 0.4.0",
  "float-cmp",
  "micromath",
+]
+
+[[package]]
+name = "embedded-graphics-core"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8b1239db5f3eeb7e33e35bd10bd014e7b2537b17e071f726a09351431337cfa"
+dependencies = [
+ "az",
+ "byteorder",
 ]
 
 [[package]]
@@ -1396,6 +1406,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "st7789"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86e89eaa897f8688aa897a7a8a62847e00e3f49f804d918bdebd14d4a1beb5ab"
+dependencies = [
+ "display-interface",
+ "embedded-graphics-core 0.3.3",
+ "embedded-hal 0.2.7",
+ "heapless 0.7.17",
+ "nb 1.1.0",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1542,7 +1565,7 @@ dependencies = [
 
 [[package]]
 name = "usb_screen"
-version = "1.1.1"
+version = "1.1.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1578,6 +1601,7 @@ dependencies = [
  "pio-proc",
  "portable-atomic",
  "rand_core",
+ "st7789",
  "static_cell",
  "usbd-hid 0.7.0",
 ]
